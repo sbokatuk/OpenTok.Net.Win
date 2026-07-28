@@ -2,7 +2,7 @@
     x:Class="OpenTok.Sample.WinUI.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="OpenTok.Net.Windows sample">
+    Title="OpenTok.Net.Win sample">
 
     <Grid Padding="12" RowSpacing="12">
         <Grid.RowDefinitions>
