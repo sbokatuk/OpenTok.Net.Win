@@ -154,10 +154,12 @@ jobs:
           # runtime — so this also exercises that the guard permits the configuration it should.
           #
           # On failure, dump what the sample actually resolved. This job is the only one that builds
-          # a real consumer, and its failures have twice been about what the package hands a consumer
-          # rather than about the source — questions that cannot be answered from a Mac, because a
-          # -windows consumer build needs the XAML compiler. The two things worth knowing are what is
-          # in the package and which Content items the consumer ended up with.
+          # a real consumer, and its failures have been about what the package hands a consumer
+          # rather than about the source. The dump is the copy-to-output list rather than @(Content)
+          # because the last failure was four MSB3030s over items no evaluation ever shows: a
+          # consumer's PRI expansion creates them inside a target, out of names recorded in this
+          # package's own .pri. GetCopyToOutputDirectoryItems runs that expansion; -getItem:Content
+          # printed an empty list and cost a round trip.
           if ! dotnet build samples/OpenTok.Sample.WinUI \
                  --configuration Release \
                  -r win-x64 --self-contained false \
@@ -167,9 +169,11 @@ jobs:
             unzip -l "artifacts/OpenTok.Net.Win.${v}.nupkg" || true
             echo "::endgroup::"
 
-            echo "::group::Content items the sample resolved"
+            echo "::group::files the sample would copy to its output"
             dotnet msbuild samples/OpenTok.Sample.WinUI/OpenTok.Sample.WinUI.csproj \
-              -getItem:Content -p:Configuration=Release \
+              -t:GetCopyToOutputDirectoryItems \
+              -getItem:AllItemsFullPathWithTargetPath \
+              -p:Configuration=Release \
               -p:OpenTokWinPackageVersion="${v}" || true
             echo "::endgroup::"
 

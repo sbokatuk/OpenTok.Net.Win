@@ -61,6 +61,13 @@ target arm64, rather than letting it surface as a `BadImageFormatException` afte
 started. Windows on ARM runs the x64 build under emulation; set
 `OpenTokSkipArchitectureCheck=true` if you are supplying the native payload yourself.
 
+The payload itself is not copied into this package. It reaches your app the way Vonage intended,
+through `OpenTok.Client`'s own `build/OpenTok.Client.targets` — which this package's dependency
+deliberately flows to you, because NuGet's default would have kept it private and left you with an
+app that has no `opentok.dll` in it. A second copy here would be worse than useless: a WinUI
+library's `.pri` records every content file it is given, and a consumer copies what that `.pri`
+names from beside it.
+
 ## Versioning
 
 `<native SDK version>.<binding revision>`, the same scheme the sibling repositories use, so

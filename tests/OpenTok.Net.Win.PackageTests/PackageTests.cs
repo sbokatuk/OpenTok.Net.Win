@@ -96,10 +96,10 @@ public class PackageTests
         // not carry is therefore worse than carrying it.
         //
         // Read as bytes rather than parsed. The point is only whether these four names appear at
-        // all, and a .pri is a string pool — UTF-16 in practice, checked as UTF-8 too rather than
-        // relying on that. Vacuous against a package from build/PackCheck.sh, whose .pri files are
-        // empty placeholders; CI runs this against the real Windows-packed .nupkg, which is where it
-        // has teeth.
+        // all, and a .pri is a string pool — UTF-16 in practice, checked as UTF-8 and without
+        // regard to case rather than relying on that. Vacuous against a package from
+        // build/PackCheck.sh, whose .pri files are empty placeholders; CI runs this against the real
+        // Windows-packed .nupkg, which is where it has teeth.
         using var package = OpenPackage();
 
         var entry = package.GetEntry($"lib/{tfm}/{PackageId}.pri");
@@ -111,11 +111,9 @@ public class PackageTests
             stream.CopyTo(contents);
         }
 
-        var bytes = contents.ToArray();
+        var index = contents.ToArray();
 
-        var named = NativePayload
-            .Where(n => Contains(bytes, Encoding.Unicode.GetBytes(n)) || Contains(bytes, Encoding.UTF8.GetBytes(n)))
-            .ToList();
+        var named = NativePayload.Where(n => Names(index, n)).ToList();
 
         Assert.True(
             named.Count == 0,
@@ -215,8 +213,18 @@ public class PackageTests
             : [];
     }
 
+    /// <summary>
+    /// Whether <paramref name="index"/> — the bytes of a .pri — contains <paramref name="file"/> as
+    /// a name, in either encoding a string pool plausibly uses and whatever case MakePri wrote it in.
+    /// </summary>
+    private static bool Names(byte[] index, string file) =>
+        Contains(index, Encoding.Unicode.GetBytes(file)) || Contains(index, Encoding.UTF8.GetBytes(file));
+
     private static bool Contains(byte[] haystack, byte[] needle) =>
-        haystack.AsSpan().IndexOf(needle) >= 0;
+        Lowered(haystack).AsSpan().IndexOf(Lowered(needle)) >= 0;
+
+    private static byte[] Lowered(byte[] bytes) =>
+        [.. bytes.Select(b => b is >= (byte)'A' and <= (byte)'Z' ? (byte)(b + ('a' - 'A')) : b)];
 
     private static string ReadNuspec(ZipArchive package)
     {
