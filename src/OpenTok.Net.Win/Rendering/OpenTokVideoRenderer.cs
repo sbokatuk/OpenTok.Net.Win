@@ -1,6 +1,8 @@
+using System.Runtime.InteropServices;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media.Imaging;
 using OpenTok;
+using WinRT;
 
 namespace OpenTok.Net.Win.Rendering;
 
@@ -253,12 +255,51 @@ public sealed class OpenTokVideoRenderer : IVideoRenderer, IDisposable
             SourceChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        using (var stream = Source.PixelBuffer.AsStream())
-        {
-            stream.Write(pixels, 0, length);
-        }
+        CopyToBackBuffer(Source, pixels, length);
 
         Source.Invalidate();
+    }
+
+    /// <summary>
+    /// Copies BGRA bytes into a <see cref="WriteableBitmap"/>'s pixel buffer.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>PixelBuffer.AsStream()</c> is the answer everywhere on the internet and does not exist
+    /// here. That extension lives in <c>System.Runtime.InteropServices.WindowsRuntime</c>, which was
+    /// a .NET Framework and UWP facility and is not part of .NET 5 and later — under CsWinRT the
+    /// only <c>AsStream</c> in scope takes an <c>IRandomAccessStream</c>, so the call fails to
+    /// compile with CS1929 rather than being merely unavailable at runtime.
+    /// </para>
+    /// <para>
+    /// The supported route is <c>IBufferByteAccess</c>, the COM interface every WinRT buffer
+    /// implements, which hands back a pointer to the pixels themselves. That also removes a copy:
+    /// the previous shape wrote through a <see cref="Stream"/>, which for a 1080p frame is 8 MB
+    /// pushed through a stream abstraction thirty times a second.
+    /// </para>
+    /// </remarks>
+    private static unsafe void CopyToBackBuffer(WriteableBitmap bitmap, byte[] pixels, int length)
+    {
+        var access = bitmap.PixelBuffer.As<IBufferByteAccess>();
+        access.Buffer(out var target);
+
+        pixels.AsSpan(0, length).CopyTo(new Span<byte>(target, length));
+    }
+
+    /// <summary>
+    /// The COM interface behind every WinRT <c>IBuffer</c>, giving direct access to its bytes.
+    /// </summary>
+    /// <remarks>
+    /// Declared here rather than referenced because the Windows App SDK does not project it: it is
+    /// a plain COM interface, not a WinRT type. The GUID is fixed by Windows and is the same one
+    /// <c>robuffer.h</c> declares.
+    /// </remarks>
+    [ComImport]
+    [Guid("905a0fef-bc53-11df-8c49-001e4fc686da")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IBufferByteAccess
+    {
+        unsafe void Buffer(out byte* value);
     }
 
     /// <summary>Stops rendering. Safe to call from any thread, and more than once.</summary>

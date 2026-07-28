@@ -73,7 +73,19 @@ requires all platform heads to agree on the first three components.
 dotnet pack src/OpenTok.Net.Win --configuration Release -o artifacts
 ```
 
-Needs Windows and the Windows App SDK. One exception, and it is deliberate:
+Packing needs Windows and the Windows App SDK. *Compiling* does not:
+
+```bash
+./build/CompileCheck.sh
+```
+
+runs the C# compiler over every Windows target framework on any operating system, using
+`EnableWindowsTargeting=true` to restore the reference packs and stopping at `-t:Compile` — a full
+build would go on to run `MakePri.exe`, which really is Windows-only. It catches everything the
+compiler can: missing members, wrong signatures, and the interface-constraint mismatches that the
+SDK's XML documentation does not record.
+
+The tests are the other exception, and this one is deliberate in the design:
 
 ```bash
 dotnet test tests/OpenTok.Net.Win.UnitTests
