@@ -79,7 +79,20 @@ Packing needs Windows and the Windows App SDK. *Compiling* does not:
 ./build/CompileCheck.sh
 ```
 
-runs the C# compiler over every Windows target framework on any operating system, using
+runs the C# compiler over every Windows target framework on any operating system, and
+
+```bash
+./build/PackCheck.sh
+```
+
+packs the real `.nupkg` and runs the package tests against it — the failure surface after
+compilation, and the one that has cost the most CI round trips. Both use
+`EnableWindowsTargeting=true` to restore the reference packs; `CompileCheck.sh` stops at
+`-t:Compile`, and `PackCheck.sh` sidesteps `MakePri.exe` by pre-creating the file its target
+declares as output, so the `.pri` files it produces are empty placeholders. Development aids, not
+substitutes for the Windows pack job — nothing they produce should be published.
+
+`CompileCheck.sh` uses
 `EnableWindowsTargeting=true` to restore the reference packs and stopping at `-t:Compile` — a full
 build would go on to run `MakePri.exe`, which really is Windows-only. It catches everything the
 compiler can: missing members, wrong signatures, and the interface-constraint mismatches that the
