@@ -8,21 +8,27 @@ set -e
 #
 # build/CompileCheck.sh answers "does the C# compile". This answers the question after it: "is the
 # package a consumer restores actually right" — which is a different failure surface, and the one
-# that has cost the most CI round trips. Two real bugs it would have caught locally:
+# that has cost the most CI round trips. One real bug it would have caught locally:
 #
 #   NU5030   the licence file 'LICENSE' does not exist in the package — from a too-broad
 #            IncludeContentInPack=false, which despite its name gates *all* explicitly packed files.
-#   MSB3030  a consumer could not copy DshowCapturer.dll from inside our package, because
-#            OpenTok.Client's targets had leaked its native payload into it as @(Content).
 #
 # THE HACK, stated plainly: packing runs MakePri.exe, which is a Windows binary. The target that
 # invokes it declares Outputs="$(ProjectPriFullPath)", so pre-creating an empty file at that path
-# makes MSBuild skip the target as up to date.
+# makes MSBuild skip the target as up to date. Its inputs are regenerated whenever the project file
+# changes, which can leave them newer than the placeholder — so the first run after an edit may
+# still reach MakePri.exe and fail with "Exec format error". Run it again.
 #
 # The consequence is that the .pri files in a package produced here are empty placeholders. That is
 # fine for what this script checks — which files are present, and which are not — and useless for
-# anything about resource indexing. It is a development aid, not a substitute for the Windows pack
-# job, and nothing it produces should ever be published.
+# anything about resource indexing. Which is also its blind spot, and the one that cost four round
+# trips: the four MSB3030s a consumer hit were *names inside the .pri*, put there by MakePri
+# indexing OpenTok.Client's native payload as this library's @(Content). A package produced here
+# cannot show that, because MakePri never ran. Only the Windows pack job can, and
+# PackageTests.Does_not_name_the_native_payload_in_its_resource_index is what reads it there.
+#
+# It is a development aid, not a substitute for the Windows pack job, and nothing it produces
+# should ever be published.
 
 cd "$(dirname "$0")/.."
 

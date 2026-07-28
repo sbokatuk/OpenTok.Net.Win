@@ -31,7 +31,28 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenTok.Client" Version="$(OpenTokClientPackageVersion)" />
+    <!--
+      ExcludeAssets="build" here, PrivateAssets="none" for everyone downstream. Both halves matter,
+      and the reason is not obvious from either name.
+
+      OpenTok.Client's build/OpenTok.Client.targets globs its own package directory and adds
+      opentok.dll and the three capturers as @(Content) with CopyToOutputDirectory. That is right for
+      an application and wrong here: this is a WinUI library, so GenerateLibraryLayout is on, and
+      MakePri indexes every @(Content) item into OpenTok.Net.Win.pri under a folder named after the
+      library. The .pri ships in lib/<tfm>/; the native DLLs deliberately do not. A consumer's
+      AddPriPayloadFilesToCopyToOutputDirectoryItems then expands that .pri, resolves each recorded
+      payload file next to it, and fails with four MSB3030s for
+      lib/<tfm>/OpenTok.Net.Win/opentok.dll and friends — paths recorded at our pack time that exist
+      in no package. Excluding the build assets means there is nothing to index.
+
+      PrivateAssets="none" is how the payload reaches an app instead. NuGet's default marks a
+      dependency's build assets private, so a consumer of this package would restore OpenTok.Client,
+      never import its targets, and get an app with no opentok.dll in it — the exact failure this
+      repository exists downstream of, one level further out. Flowing them costs nothing (this
+      package carries no copy of the payload) and is what makes "add one package" work.
+    -->
+    <PackageReference Include="OpenTok.Client" Version="$(OpenTokClientPackageVersion)"
+                      ExcludeAssets="build" PrivateAssets="none" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="$(WindowsAppSdkVersion)" />
   </ItemGroup>
 
