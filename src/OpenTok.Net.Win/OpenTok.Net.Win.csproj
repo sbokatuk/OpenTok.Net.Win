@@ -21,6 +21,28 @@
       frames a second, to avoid one clearly scoped block.
     -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!--
+      Keep OpenTok.Client's native payload out of *this* package.
+
+      OpenTok.Client ships build/OpenTok.Client.targets, which globs its own directory and adds
+      opentok.dll and the three capturers as @(Content) with CopyToOutputDirectory. That is right for
+      an application and wrong for a library that gets packed: the Content items were being written
+      into this package, so a consumer restored OpenTok.Net.Win and then tried to copy
+      lib/net9.0-windows10.0.19041/OpenTok.Net.Win/DshowCapturer.dll — a path recorded at our pack
+      time that exists nowhere in the package it was recorded into. MSB3030, four times, in the
+      sample.
+
+      Turning it off costs a consumer nothing. OpenTok.Client is a dependency of this package, so its
+      targets run in the consuming project too and copy the real files out of the real package
+      directory. The sample job's "check the native payload reached the output" step is exactly the
+      assertion that this still happens.
+
+      IncludeContentInPack governs @(Content) only. The README, LICENCE and
+      build/OpenTok.Net.Win.targets are @(None) with an explicit Pack="true", so they are unaffected
+      — and PackageTests asserts the targets file is present, which would catch it if that changed.
+    -->
+    <IncludeContentInPack>false</IncludeContentInPack>
   </PropertyGroup>
 
   <PropertyGroup>

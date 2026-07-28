@@ -48,10 +48,42 @@ public class PackageTests
     }
 
     [Fact]
+    public void Does_not_carry_the_vonage_sdk_native_payload()
+    {
+        // OpenTok.Client's own targets glob its package directory and add opentok.dll and the three
+        // capturers as Content with CopyToOutputDirectory. Right for an application, wrong for a
+        // library being packed: those Content items landed in *this* package, and a consumer then
+        // tried to copy lib/<tfm>/OpenTok.Net.Win/DshowCapturer.dll — a path recorded at our pack
+        // time that exists nowhere in the package recording it. Four MSB3030s in the sample.
+        //
+        // Asserted rather than trusted, because the failure is entirely downstream: the package
+        // packs, uploads and installs cleanly, and only a consumer's build ever says otherwise.
+        using var package = OpenPackage();
+
+        var native = package.Entries
+            .Where(e => e.FullName.StartsWith("lib/", StringComparison.Ordinal))
+            .Select(e => Path.GetFileName(e.FullName))
+            .Where(n =>
+                n.Equals("opentok.dll", StringComparison.OrdinalIgnoreCase) ||
+                n.Equals("DshowCapturer.dll", StringComparison.OrdinalIgnoreCase) ||
+                n.Equals("MFCapturer.dll", StringComparison.OrdinalIgnoreCase) ||
+                n.Equals("OpenTokMMDevice.dll", StringComparison.OrdinalIgnoreCase))
+            .Distinct()
+            .ToList();
+
+        Assert.True(
+            native.Count == 0,
+            $"the package carries OpenTok.Client's native payload ({string.Join(", ", native)}). " +
+            "It reaches a consumer through the OpenTok.Client dependency; a second copy here records " +
+            "paths that do not exist and breaks the consumer's build with MSB3030.");
+    }
+
+    [Fact]
     public void Depends_on_the_vonage_windows_sdk()
     {
         // The whole point of the package is to render frames from OpenTok.Client. A consumer adding
-        // this one should not also have to know to add that one.
+        // this one should not also have to know to add that one — and, since the payload above is
+        // deliberately not shipped here, this dependency is how the payload arrives at all.
         using var package = OpenPackage();
 
         Assert.Contains("id=\"OpenTok.Client\"", ReadNuspec(package), StringComparison.Ordinal);
