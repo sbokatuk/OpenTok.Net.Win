@@ -1,0 +1,146 @@
+name: build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+    inputs:
+      suffix:
+        type: string
+        default: ''
+      verify-release:
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  # The converter, on the cheapest runner there is.
+  #
+  # Separate from the Windows jobs on purpose. The I420 to BGRA arithmetic is the one part of this
+  # repository with no Windows types in it, and it is also the part most able to be wrong without
+  # looking wrong — a bad chroma stride or a full-range coefficient set produces a picture that is
+  # merely slightly off. Keeping it runnable on Linux means it is verified in seconds on every push,
+  # rather than behind a Windows runner and a Windows App SDK restore.
+  converter:
+    name: converter arithmetic (ubuntu)
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Test
+        run: dotnet test tests/OpenTok.Net.Windows.UnitTests --configuration Release
+
+  pack:
+    name: build and pack (windows)
+    timeout-minutes: 30
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Three target frameworks, one SDK. Unlike the iOS and Android repositories there is no
+      # per-band workload here — a -windows target framework needs only the Windows SDK reference
+      # pack, which the .NET 10 SDK carries for net8, net9 and net10 alike. So no two-pass build and
+      # no merge step.
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Pack
+        shell: bash
+        run: |
+          s="${{ inputs.suffix != '' && format('-p:VersionSuffix={0}', inputs.suffix) || '' }}"
+          dotnet pack src/OpenTok.Net.Windows --configuration Release ${s} -o artifacts
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: artifacts
+
+  # Proves the package a consumer restores actually carries what it claims, rather than what the
+  # project file says it should. Runs on Linux because it only reads the .nupkg as a zip.
+  package-tests:
+    name: package contents
+    timeout-minutes: 10
+    needs: pack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget-packages
+          path: artifacts
+
+      - name: Test
+        run: dotnet test tests/OpenTok.Net.Windows.PackageTests --configuration Release
+
+  # The one that would catch a renderer that does not compile.
+  #
+  # Release rather than Debug, and against the packed .nupkg rather than a project reference, for
+  # the same reason the sibling repositories do it: a project reference proves the source compiles,
+  # not that the package a consumer restores resolves, brings its native payload along, and links.
+  sample:
+    name: WinUI sample against the packed package (Release)
+    timeout-minutes: 30
+    needs: pack
+    if: ${{ inputs.verify-release != false }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget-packages
+          path: artifacts
+
+      - name: Build the sample
+        shell: bash
+        run: |
+          v="$(ls artifacts/OpenTok.Net.Windows.*.nupkg | head -1 | sed -E 's/.*OpenTok\.Net\.Windows\.(.*)\.nupkg/\1/')"
+          echo "building against ${v}"
+
+          # x64 explicitly. OpenTok.Client's native payload has no arm64 build, and the package's
+          # own build/OpenTok.Net.Windows.targets fails the build rather than let that reach
+          # runtime — so this also exercises that the guard permits the configuration it should.
+          dotnet build samples/OpenTok.Sample.WinUI \
+            --configuration Release \
+            -r win-x64 --self-contained false \
+            -p:OpenTokWindowsPackageVersion="${v}"
+
+      # The renderer is useless if the SDK's native payload does not travel with it — that is the
+      # failure this package exists downstream of, and it is invisible until the first frame.
+      - name: Check the native payload reached the output
+        shell: bash
+        run: |
+          out="$(find samples/OpenTok.Sample.WinUI/bin/Release -name 'opentok.dll' | head -1)"
+          if [ -z "${out}" ]; then
+            echo "::error::opentok.dll is missing from the sample's build output"
+            exit 1
+          fi
+          echo "ok  ${out}"

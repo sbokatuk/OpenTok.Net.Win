@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Not a binding, unlike its two sibling repositories.
+
+    OpenTok.Client is already managed .NET — OpenTokNetStandard.dll, netstandard2.0 — so there is no
+    Objective-C or Java surface to project and nothing here is generated. What this package adds is
+    the piece Vonage does not ship: a WinUI 3 video renderer. The SDK's own WPFVideoRenderer and
+    WinFormsVideoRenderer cannot be used from WinUI, and its netstandard2.0 asset — the one a modern
+    .NET app resolves — carries no renderer at all. See README.md.
+  -->
+
+  <PropertyGroup>
+    <TargetFrameworks>$(OpenTokTargetFrameworks)</TargetFrameworks>
+    <UseWinUI>true</UseWinUI>
+
+    <!--
+      For the frame conversion only. VideoFrame hands out raw plane pointers that are valid just for
+      the duration of the RenderFrame callback, so the alternative to reading them through a Span is
+      Marshal.Copy into a managed array on every frame — a second full copy of every frame, at 30
+      frames a second, to avoid one clearly scoped block.
+    -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>OpenTok.Net.Windows</PackageId>
+    <Title>WinUI 3 video rendering for the Vonage Video Windows SDK.</Title>
+    <Description>A WinUI 3 video renderer and view for Vonage's OpenTok Windows SDK (OpenTok.Client $(OpenTokClientPackageVersion)), so a WinUI or .NET MAUI app can display OpenTok video. The SDK's own renderers target WPF and Windows Forms, and its netstandard2.0 assembly — the one modern .NET resolves — ships none at all. Adds OpenTokVideoView, OpenTokVideoRenderer and OpenTokDispatcher. Requires x64: the SDK's native payload has no arm64 build.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenTok.Client" Version="$(OpenTokClientPackageVersion)" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="$(WindowsAppSdkVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <None Include="../../LICENSE" Pack="true" PackagePath="/" />
+    <None Include="build/OpenTok.Net.Windows.targets" Pack="true" PackagePath="build/" />
+  </ItemGroup>
+
+</Project>

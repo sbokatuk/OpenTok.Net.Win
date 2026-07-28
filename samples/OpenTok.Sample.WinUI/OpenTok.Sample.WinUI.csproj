@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Consumes the packed .nupkg, not a project reference — see NuGet.config, which adds artifacts/ as
+    a source. A project reference would prove the source compiles; only the package proves that what
+    a consumer restores brings the SDK's native payload with it, which is the failure this whole
+    repository sits downstream of.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows$(OpenTokWindowsSdkVersion)</TargetFramework>
+    <UseWinUI>true</UseWinUI>
+    <RootNamespace>OpenTok.Sample.WinUI</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!--
+      Unpackaged. An MSIX-packaged sample needs a certificate and an appxmanifest to run at all,
+      which is a lot of ceremony in the way of "does the video appear".
+    -->
+    <WindowsPackageType>None</WindowsPackageType>
+
+    <!--
+      x64, not AnyCPU. OpenTok.Client's native payload has no arm64 build; see the package's own
+      build/OpenTok.Net.Windows.targets, which fails the build rather than let that surface as a
+      BadImageFormatException after launch.
+    -->
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Overridden by CI to the version it just packed. -->
+    <OpenTokWindowsPackageVersion Condition=" '$(OpenTokWindowsPackageVersion)' == '' ">$(VersionPrefix)</OpenTokWindowsPackageVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenTok.Net.Windows" Version="$(OpenTokWindowsPackageVersion)" />
+  </ItemGroup>
+
+</Project>

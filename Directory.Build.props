@@ -1,0 +1,72 @@
+<Project>
+
+  <PropertyGroup>
+    <!--
+      Package version is <native SDK version>.<binding revision>, the same scheme the sibling
+      repositories use — sbokatuk/OpenTok.Net.iOS and sbokatuk/OpenTok.Net.Android — so that
+      "OpenTok.Net.Windows 2.34.1.x" means "sits on Vonage's Video SDK 2.34.1", exactly as it does
+      for the other two.
+
+      OpenTokVersion is not this repository's choice: it is the version of OpenTok.Client being
+      built against, and OpenTok.Net's façade requires all three platform heads to agree on the
+      first three components.
+    -->
+    <OpenTokVersion>2.34.1</OpenTokVersion>
+    <OpenTokBindingRevision>1</OpenTokBindingRevision>
+    <VersionPrefix>$(OpenTokVersion).$(OpenTokBindingRevision)</VersionPrefix>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!--
+      Vonage's own Windows package, and the reason this repository is not a binding.
+
+      OpenTok.Client is already managed .NET — OpenTokNetStandard.dll, with netstandard2.0,
+      netcoreapp3.1 and net462 assets — so unlike the iOS and Android repositories there is no
+      Objective-C or Java surface to project into C#. Nothing here is generated; see README.md.
+
+      Pinned exactly, for the same reason OpenTok.Net pins its platform packages exactly: a range
+      would let a consumer resolve a version of the SDK this package's renderer was never written
+      against, and the renderer reads VideoFrame planes directly.
+    -->
+    <OpenTokClientPackageVersion>2.34.1</OpenTokClientPackageVersion>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!--
+      Windows 10 build 19041 (2004) is the Windows App SDK's own floor for WinUI 3, not a choice
+      made here. Stated once because four things have to agree on it: the package, the sample, the
+      device-free tests, and the README.
+    -->
+    <OpenTokWindowsSdkVersion>10.0.19041.0</OpenTokWindowsSdkVersion>
+    <!--
+      The Windows App SDK, which is what actually provides WinUI 3. Pinned rather than floating for
+      the same reason as everything else here, and stated once because the package, the sample and
+      any consumer's own app all have to agree on a single WinUI runtime.
+    -->
+    <WindowsAppSdkVersion>2.3.1</WindowsAppSdkVersion>
+    <OpenTokTargetFrameworks>net8.0-windows$(OpenTokWindowsSdkVersion);net9.0-windows$(OpenTokWindowsSdkVersion);net10.0-windows$(OpenTokWindowsSdkVersion)</OpenTokTargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Authors>Siarhei Bakatsiuk</Authors>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/sbokatuk/OpenTok.Net.Windows</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/sbokatuk/OpenTok.Net.Windows</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>opentok;vonage;video;webrtc;windows;winui;winappsdk;maui</PackageTags>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
+</Project>

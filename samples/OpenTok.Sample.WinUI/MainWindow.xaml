@@ -1,0 +1,34 @@
+<Window
+    x:Class="OpenTok.Sample.WinUI.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="OpenTok.Net.Windows sample">
+
+    <Grid Padding="12" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal" Spacing="8" Grid.Row="0">
+            <TextBox x:Name="ApiKeyBox" PlaceholderText="API key" Width="140" />
+            <TextBox x:Name="SessionIdBox" PlaceholderText="Session ID" Width="320" />
+            <TextBox x:Name="TokenBox" PlaceholderText="Token" Width="320" />
+            <Button x:Name="ConnectButton" Content="Connect" Click="OnConnectClick" />
+        </StackPanel>
+
+        <TextBlock x:Name="StatusText" Grid.Row="1" Text="Not connected" />
+
+        <!--
+            The publisher preview and one subscriber tile. Both are filled in from code-behind:
+            OpenTokVideoView is a plain control, so it needs no XAML namespace ceremony here.
+        -->
+        <Grid x:Name="VideoGrid" Grid.Row="2" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+        </Grid>
+    </Grid>
+</Window>

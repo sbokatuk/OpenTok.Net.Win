@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Plain net9.0, and deliberately not a Windows target framework.
+
+    Everything else in this repository needs Windows and the Windows App SDK to compile at all, so
+    on any other operating system the whole package is unbuildable and untestable. That is a poor
+    place to leave the one piece of code that is pure arithmetic over raw bytes and has no way to
+    announce that it is subtly wrong — an off-by-one in a chroma stride or a full-range coefficient
+    set produces video that looks *plausible*.
+
+    So the converter is written with no WinUI, Windows or OpenTok types in it, and this project
+    compiles that same source file directly rather than referencing the package. Same code, tested
+    on whatever machine happens to be running.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../../src/OpenTok.Net.Windows/Rendering/I420Converter.cs"
+             Link="Rendering/I420Converter.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+</Project>

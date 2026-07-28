@@ -1,0 +1,42 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!--
+    Turns the one unavoidable limitation of this package into a build error instead of a runtime one.
+
+    OpenTok.Client's native payload — opentok.dll and its three capturers — is built for x64 only.
+    There is no arm64 copy in the package, and no separate arm64 package. On a Windows-on-ARM
+    machine, or in any configuration that produces an arm64 binary, the managed assembly loads
+    happily and then the first call into the SDK throws BadImageFormatException: an error that names
+    a DLL, not a platform, and arrives after the app has started.
+
+    So this fails the build instead, while the fix is still cheap. Checked against RuntimeIdentifier
+    and Platform rather than just one, because a MAUI Windows head sets the RID and a classic WinUI
+    app sets the Platform.
+
+    Set OpenTokSkipArchitectureCheck=true to override — an arm64 machine running the app under x64
+    emulation is a real configuration, and this cannot tell the difference from here.
+  -->
+  <Target Name="OpenTokVerifyArchitecture"
+          BeforeTargets="Build"
+          Condition=" '$(OpenTokSkipArchitectureCheck)' != 'true' ">
+
+    <Error Condition=" '$(RuntimeIdentifier)' != '' AND $(RuntimeIdentifier.ToLowerInvariant().EndsWith('-arm64')) "
+           Code="OTW0001"
+           Text="OpenTok.Net.Windows cannot target arm64: OpenTok.Client $(OpenTokClientPackageVersion) ships only an x64 build of opentok.dll, so an arm64 app fails with BadImageFormatException on its first call into the SDK. Build for win-x64 instead (arm64 Windows runs it under emulation), or set OpenTokSkipArchitectureCheck=true if you are supplying the native payload yourself." />
+
+    <Error Condition=" '$(RuntimeIdentifier)' == '' AND '$(Platform)' == 'ARM64' "
+           Code="OTW0001"
+           Text="OpenTok.Net.Windows cannot target ARM64: OpenTok.Client $(OpenTokClientPackageVersion) ships only an x64 build of opentok.dll, so an ARM64 app fails with BadImageFormatException on its first call into the SDK. Build for x64 instead (ARM64 Windows runs it under emulation), or set OpenTokSkipArchitectureCheck=true if you are supplying the native payload yourself." />
+
+    <!--
+      AnyCPU is not an error, because it is the default for a class library that never loads the
+      native payload itself. It is a warning for an application, where "AnyCPU" means "whatever the
+      machine is" and lands on arm64 exactly where the error above would have caught it.
+    -->
+    <Warning Condition=" '$(OutputType)' == 'Exe' AND '$(Platform)' == 'AnyCPU' AND '$(RuntimeIdentifier)' == '' "
+             Code="OTW0002"
+             Text="OpenTok.Net.Windows is being built as AnyCPU. OpenTok.Client ships an x64-only native payload, so this app will fail at runtime on an arm64 machine. Set Platform or RuntimeIdentifier to x64." />
+
+  </Target>
+
+</Project>

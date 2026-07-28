@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <assemblyIdentity version="1.0.0.0" name="OpenTok.Sample.WinUI.app" />
+
+  <!--
+    Per-monitor v2 DPI awareness. Without it Windows bitmap-stretches the whole window on a scaled
+    display, which for a video app means the picture is upscaled twice — once by the compositor and
+    once by Windows — and looks soft for reasons that have nothing to do with the encoder.
+  -->
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+    </windowsSettings>
+  </application>
+</assembly>
