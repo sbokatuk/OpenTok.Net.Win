@@ -6,19 +6,21 @@ name: build
 on:
   workflow_call:
     inputs:
+      verify:
+        description: >
+          Whether to run the verification jobs — package validation, the sample builds, the
+          Release link checks and the e2e suites. Pull requests leave it at true, and are the only
+          place any of this runs. Releases pass false: the tagged commit was already verified on
+          its pull request, so a tag packs and publishes and nothing more. The gate is the same
+          input, with the same name and the same meaning, in every repository.
+        required: false
+        default: true
+        type: boolean
       suffix:
         description: Optional prerelease suffix (e.g. beta.12.34) appended to the package's version.
         required: false
         type: string
         default: ''
-      verify-release:
-        description: >
-          Whether to build the WinUI sample against the packed package. Defaults to true so a pull
-          request gets it; a release turns it off, because the tagged commit already passed it there.
-        required: false
-        type: boolean
-        default: true
-
 permissions:
   contents: read
 
@@ -32,6 +34,7 @@ jobs:
   # rather than behind a Windows runner and a Windows App SDK restore.
   converter:
     name: converter arithmetic (ubuntu)
+    if: ${{ inputs.verify }}
     timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
@@ -80,6 +83,7 @@ jobs:
   # project file says it should. Runs on Linux because it only reads the .nupkg as a zip.
   package-tests:
     name: package contents
+    if: ${{ inputs.verify }}
     timeout-minutes: 10
     needs: pack
     runs-on: ubuntu-latest
@@ -109,7 +113,7 @@ jobs:
     name: WinUI sample against the packed package (Release)
     timeout-minutes: 30
     needs: pack
-    if: ${{ inputs.verify-release != false }}
+    if: ${{ inputs.verify }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -148,10 +152,29 @@ jobs:
           # x64 explicitly. OpenTok.Client's native payload has no arm64 build, and the package's
           # own build/OpenTok.Net.Win.targets fails the build rather than let that reach
           # runtime — so this also exercises that the guard permits the configuration it should.
-          dotnet build samples/OpenTok.Sample.WinUI \
-            --configuration Release \
-            -r win-x64 --self-contained false \
-            -p:OpenTokWinPackageVersion="${v}"
+          #
+          # On failure, dump what the sample actually resolved. This job is the only one that builds
+          # a real consumer, and its failures have twice been about what the package hands a consumer
+          # rather than about the source — questions that cannot be answered from a Mac, because a
+          # -windows consumer build needs the XAML compiler. The two things worth knowing are what is
+          # in the package and which Content items the consumer ended up with.
+          if ! dotnet build samples/OpenTok.Sample.WinUI \
+                 --configuration Release \
+                 -r win-x64 --self-contained false \
+                 -p:OpenTokWinPackageVersion="${v}"; then
+
+            echo "::group::package contents"
+            unzip -l "artifacts/OpenTok.Net.Win.${v}.nupkg" || true
+            echo "::endgroup::"
+
+            echo "::group::Content items the sample resolved"
+            dotnet msbuild samples/OpenTok.Sample.WinUI/OpenTok.Sample.WinUI.csproj \
+              -getItem:Content -p:Configuration=Release \
+              -p:OpenTokWinPackageVersion="${v}" || true
+            echo "::endgroup::"
+
+            exit 1
+          fi
 
       # The renderer is useless if the SDK's native payload does not travel with it — that is the
       # failure this package exists downstream of, and it is invisible until the first frame.
