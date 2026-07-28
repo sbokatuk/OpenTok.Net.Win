@@ -61,6 +61,13 @@ target arm64, rather than letting it surface as a `BadImageFormatException` afte
 started. Windows on ARM runs the x64 build under emulation; set
 `OpenTokSkipArchitectureCheck=true` if you are supplying the native payload yourself.
 
+The payload itself is not copied into this package. It reaches your app the way Vonage intended,
+through `OpenTok.Client`'s own `build/OpenTok.Client.targets` — which this package's dependency
+deliberately flows to you, because NuGet's default would have kept it private and left you with an
+app that has no `opentok.dll` in it. A second copy here would be worse than useless: a WinUI
+library's `.pri` records every content file it is given, and a consumer copies what that `.pri`
+names from beside it.
+
 ## Versioning
 
 `<native SDK version>.<binding revision>`, the same scheme the sibling repositories use, so
@@ -79,7 +86,20 @@ Packing needs Windows and the Windows App SDK. *Compiling* does not:
 ./build/CompileCheck.sh
 ```
 
-runs the C# compiler over every Windows target framework on any operating system, using
+runs the C# compiler over every Windows target framework on any operating system, and
+
+```bash
+./build/PackCheck.sh
+```
+
+packs the real `.nupkg` and runs the package tests against it — the failure surface after
+compilation, and the one that has cost the most CI round trips. Both use
+`EnableWindowsTargeting=true` to restore the reference packs; `CompileCheck.sh` stops at
+`-t:Compile`, and `PackCheck.sh` sidesteps `MakePri.exe` by pre-creating the file its target
+declares as output, so the `.pri` files it produces are empty placeholders. Development aids, not
+substitutes for the Windows pack job — nothing they produce should be published.
+
+`CompileCheck.sh` uses
 `EnableWindowsTargeting=true` to restore the reference packs and stopping at `-t:Compile` — a full
 build would go on to run `MakePri.exe`, which really is Windows-only. It catches everything the
 compiler can: missing members, wrong signatures, and the interface-constraint mismatches that the

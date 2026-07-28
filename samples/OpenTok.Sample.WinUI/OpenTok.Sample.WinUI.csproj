@@ -35,11 +35,11 @@
 
   <PropertyGroup>
     <!-- Overridden by CI to the version it just packed. -->
-    <OpenTokWindowsPackageVersion Condition=" '$(OpenTokWindowsPackageVersion)' == '' ">$(VersionPrefix)</OpenTokWindowsPackageVersion>
+    <OpenTokWinPackageVersion Condition=" '$(OpenTokWinPackageVersion)' == '' ">$(VersionPrefix)</OpenTokWinPackageVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenTok.Net.Win" Version="$(OpenTokWindowsPackageVersion)" />
+    <PackageReference Include="OpenTok.Net.Win" Version="$(OpenTokWinPackageVersion)" />
   </ItemGroup>
 
 </Project>

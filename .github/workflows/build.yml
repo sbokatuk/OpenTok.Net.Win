@@ -1,18 +1,26 @@
 name: build
 
+# Reusable only, like the sibling repositories' build.yml. pr.yml and release.yml decide the version
+# and what to do with the result; also triggering on pull_request would run this whole pipeline
+# twice for every push to a pull request — once at the beta version and once without one.
 on:
-  pull_request:
-  push:
-    branches: [main]
   workflow_call:
     inputs:
+      verify:
+        description: >
+          Whether to run the verification jobs — package validation, the sample builds, the
+          Release link checks and the e2e suites. Pull requests leave it at true, and are the only
+          place any of this runs. Releases pass false: the tagged commit was already verified on
+          its pull request, so a tag packs and publishes and nothing more. The gate is the same
+          input, with the same name and the same meaning, in every repository.
+        required: false
+        default: true
+        type: boolean
       suffix:
+        description: Optional prerelease suffix (e.g. beta.12.34) appended to the package's version.
+        required: false
         type: string
         default: ''
-      verify-release:
-        type: boolean
-        default: true
-
 permissions:
   contents: read
 
@@ -26,6 +34,7 @@ jobs:
   # rather than behind a Windows runner and a Windows App SDK restore.
   converter:
     name: converter arithmetic (ubuntu)
+    if: ${{ inputs.verify }}
     timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
@@ -74,6 +83,7 @@ jobs:
   # project file says it should. Runs on Linux because it only reads the .nupkg as a zip.
   package-tests:
     name: package contents
+    if: ${{ inputs.verify }}
     timeout-minutes: 10
     needs: pack
     runs-on: ubuntu-latest
@@ -103,7 +113,7 @@ jobs:
     name: WinUI sample against the packed package (Release)
     timeout-minutes: 30
     needs: pack
-    if: ${{ inputs.verify-release != false }}
+    if: ${{ inputs.verify }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -122,16 +132,53 @@ jobs:
       - name: Build the sample
         shell: bash
         run: |
-          v="$(ls artifacts/OpenTok.Net.Win.*.nupkg | head -1 | sed -E 's/.*OpenTok\.Net\.Windows\.(.*)\.nupkg/\1/')"
+          # Computed from the same two properties release.yml and pr.yml read, rather than scraped
+          # out of a file name. The previous shape parsed `ls artifacts/*.nupkg` with a sed pattern,
+          # which had two problems: the glob also matches the .snupkg sitting beside it, and the
+          # pattern silently stopped substituting when the package was renamed — leaving v set to
+          # the whole path and the build failing with "is not a valid version string".
+          version="$(sed -n 's:.*<OpenTokVersion>\(.*\)</OpenTokVersion>.*:\1:p' Directory.Build.props | head -1)"
+          revision="$(sed -n 's:.*<OpenTokBindingRevision>\(.*\)</OpenTokBindingRevision>.*:\1:p' Directory.Build.props | head -1)"
+          v="${version}.${revision}${{ inputs.suffix != '' && format('-{0}', inputs.suffix) || '' }}"
+
           echo "building against ${v}"
+
+          if [ ! -f "artifacts/OpenTok.Net.Win.${v}.nupkg" ]; then
+            echo "::error::artifacts/OpenTok.Net.Win.${v}.nupkg does not exist — the pack job and this job disagree about the version"
+            ls artifacts
+            exit 1
+          fi
 
           # x64 explicitly. OpenTok.Client's native payload has no arm64 build, and the package's
           # own build/OpenTok.Net.Win.targets fails the build rather than let that reach
           # runtime — so this also exercises that the guard permits the configuration it should.
-          dotnet build samples/OpenTok.Sample.WinUI \
-            --configuration Release \
-            -r win-x64 --self-contained false \
-            -p:OpenTokWindowsPackageVersion="${v}"
+          #
+          # On failure, dump what the sample actually resolved. This job is the only one that builds
+          # a real consumer, and its failures have been about what the package hands a consumer
+          # rather than about the source. The dump is the copy-to-output list rather than @(Content)
+          # because the last failure was four MSB3030s over items no evaluation ever shows: a
+          # consumer's PRI expansion creates them inside a target, out of names recorded in this
+          # package's own .pri. GetCopyToOutputDirectoryItems runs that expansion; -getItem:Content
+          # printed an empty list and cost a round trip.
+          if ! dotnet build samples/OpenTok.Sample.WinUI \
+                 --configuration Release \
+                 -r win-x64 --self-contained false \
+                 -p:OpenTokWinPackageVersion="${v}"; then
+
+            echo "::group::package contents"
+            unzip -l "artifacts/OpenTok.Net.Win.${v}.nupkg" || true
+            echo "::endgroup::"
+
+            echo "::group::files the sample would copy to its output"
+            dotnet msbuild samples/OpenTok.Sample.WinUI/OpenTok.Sample.WinUI.csproj \
+              -t:GetCopyToOutputDirectoryItems \
+              -getItem:AllItemsFullPathWithTargetPath \
+              -p:Configuration=Release \
+              -p:OpenTokWinPackageVersion="${v}" || true
+            echo "::endgroup::"
+
+            exit 1
+          fi
 
       # The renderer is useless if the SDK's native payload does not travel with it — that is the
       # failure this package exists downstream of, and it is invisible until the first frame.
