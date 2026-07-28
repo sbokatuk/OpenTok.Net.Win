@@ -1,7 +1,7 @@
 using Microsoft.UI.Dispatching;
 using OpenTok;
 
-namespace OpenTok.Net.Windows;
+namespace OpenTok.Net.Win;
 
 /// <summary>
 /// An <see cref="IDispatcher"/> that delivers every OpenTok event on a WinUI UI thread.

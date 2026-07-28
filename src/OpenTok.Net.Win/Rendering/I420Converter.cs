@@ -1,4 +1,4 @@
-namespace OpenTok.Net.Windows.Rendering;
+namespace OpenTok.Net.Win.Rendering;
 
 /// <summary>
 /// Converts I420 (planar YUV 4:2:0) video frames to BGRA8, the format a WinUI
@@ -15,7 +15,7 @@ namespace OpenTok.Net.Windows.Rendering;
 /// <para>
 /// Deliberately free of every WinUI, Windows and OpenTok type — it takes spans and integers and
 /// nothing else. That is not incidental tidiness: it lets
-/// <c>tests/OpenTok.Net.Windows.UnitTests</c> compile this exact source file into a plain
+/// <c>tests/OpenTok.Net.Win.UnitTests</c> compile this exact source file into a plain
 /// <c>net9.0</c> assembly and test it on any operating system. The rest of this package cannot be
 /// built or run outside Windows, so this is the one place where the arithmetic that is easiest to
 /// get wrong can actually be verified against known values.

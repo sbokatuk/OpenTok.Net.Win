@@ -24,7 +24,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageId>OpenTok.Net.Windows</PackageId>
+    <PackageId>OpenTok.Net.Win</PackageId>
     <Title>WinUI 3 video rendering for the Vonage Video Windows SDK.</Title>
     <Description>A WinUI 3 video renderer and view for Vonage's OpenTok Windows SDK (OpenTok.Client $(OpenTokClientPackageVersion)), so a WinUI or .NET MAUI app can display OpenTok video. The SDK's own renderers target WPF and Windows Forms, and its netstandard2.0 assembly — the one modern .NET resolves — ships none at all. Adds OpenTokVideoView, OpenTokVideoRenderer and OpenTokDispatcher. Requires x64: the SDK's native payload has no arm64 build.</Description>
   </PropertyGroup>
@@ -37,7 +37,7 @@
   <ItemGroup>
     <None Include="../../README.md" Pack="true" PackagePath="/" />
     <None Include="../../LICENSE" Pack="true" PackagePath="/" />
-    <None Include="build/OpenTok.Net.Windows.targets" Pack="true" PackagePath="build/" />
+    <None Include="build/OpenTok.Net.Win.targets" Pack="true" PackagePath="build/" />
   </ItemGroup>
 
 </Project>

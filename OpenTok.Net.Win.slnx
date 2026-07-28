@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/OpenTok.Sample.WinUI/OpenTok.Sample.WinUI.csproj">
+      <Platform Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/OpenTok.Net.Win/OpenTok.Net.Win.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OpenTok.Net.Win.PackageTests/OpenTok.Net.Win.PackageTests.csproj" />
+    <Project Path="tests/OpenTok.Net.Win.UnitTests/OpenTok.Net.Win.UnitTests.csproj" />
+  </Folder>
+</Solution>

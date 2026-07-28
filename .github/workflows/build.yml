@@ -37,7 +37,7 @@ jobs:
           dotnet-version: 9.0.x
 
       - name: Test
-        run: dotnet test tests/OpenTok.Net.Windows.UnitTests --configuration Release
+        run: dotnet test tests/OpenTok.Net.Win.UnitTests --configuration Release
 
   pack:
     name: build and pack (windows)
@@ -62,7 +62,7 @@ jobs:
         shell: bash
         run: |
           s="${{ inputs.suffix != '' && format('-p:VersionSuffix={0}', inputs.suffix) || '' }}"
-          dotnet pack src/OpenTok.Net.Windows --configuration Release ${s} -o artifacts
+          dotnet pack src/OpenTok.Net.Win --configuration Release ${s} -o artifacts
 
       - name: Upload packages
         uses: actions/upload-artifact@v4
@@ -92,7 +92,7 @@ jobs:
           path: artifacts
 
       - name: Test
-        run: dotnet test tests/OpenTok.Net.Windows.PackageTests --configuration Release
+        run: dotnet test tests/OpenTok.Net.Win.PackageTests --configuration Release
 
   # The one that would catch a renderer that does not compile.
   #
@@ -122,11 +122,11 @@ jobs:
       - name: Build the sample
         shell: bash
         run: |
-          v="$(ls artifacts/OpenTok.Net.Windows.*.nupkg | head -1 | sed -E 's/.*OpenTok\.Net\.Windows\.(.*)\.nupkg/\1/')"
+          v="$(ls artifacts/OpenTok.Net.Win.*.nupkg | head -1 | sed -E 's/.*OpenTok\.Net\.Windows\.(.*)\.nupkg/\1/')"
           echo "building against ${v}"
 
           # x64 explicitly. OpenTok.Client's native payload has no arm64 build, and the package's
-          # own build/OpenTok.Net.Windows.targets fails the build rather than let that reach
+          # own build/OpenTok.Net.Win.targets fails the build rather than let that reach
           # runtime — so this also exercises that the guard permits the configuration it should.
           dotnet build samples/OpenTok.Sample.WinUI \
             --configuration Release \

@@ -1,16 +1,16 @@
 using System.IO.Compression;
 using Xunit;
 
-namespace OpenTok.Net.Windows.PackageTests;
+namespace OpenTok.Net.Win.PackageTests;
 
 /// <summary>
-/// Asserts what <c>OpenTok.Net.Windows</c> ships, read from the packed .nupkg rather than from the
+/// Asserts what <c>OpenTok.Net.Win</c> ships, read from the packed .nupkg rather than from the
 /// project file — so a pack step that quietly dropped a target framework or the architecture guard
 /// fails here rather than at a consumer.
 /// </summary>
 public class PackageTests
 {
-    private const string PackageId = "OpenTok.Net.Windows";
+    private const string PackageId = "OpenTok.Net.Win";
 
     /// <summary>
     /// Every target framework the package must carry. Pinned rather than discovered: a package that
@@ -36,7 +36,7 @@ public class PackageTests
     [Fact]
     public void Ships_the_architecture_guard()
     {
-        // build/OpenTok.Net.Windows.targets is what turns the x64-only native payload into a build
+        // build/OpenTok.Net.Win.targets is what turns the x64-only native payload into a build
         // error instead of a BadImageFormatException after launch. It only works if it is actually
         // in the package under build/, where NuGet imports it automatically — a PackagePath typo
         // leaves the package installable, buildable and silently unguarded.
@@ -44,7 +44,7 @@ public class PackageTests
 
         Assert.True(
             package.GetEntry($"build/{PackageId}.targets") is not null,
-            "the package does not carry build/OpenTok.Net.Windows.targets, so the arm64 guard never runs.");
+            "the package does not carry build/OpenTok.Net.Win.targets, so the arm64 guard never runs.");
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public class PackageTests
 
         Assert.True(
             matches.Length > 0,
-            $"No {PackageId}.<version>.nupkg found in '{directory}'. Pack src/OpenTok.Net.Windows first.");
+            $"No {PackageId}.<version>.nupkg found in '{directory}'. Pack src/OpenTok.Net.Win first.");
 
         return ZipFile.OpenRead(matches.OrderByDescending(File.GetLastWriteTimeUtc).First());
     }

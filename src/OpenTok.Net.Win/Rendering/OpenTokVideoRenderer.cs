@@ -2,7 +2,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media.Imaging;
 using OpenTok;
 
-namespace OpenTok.Net.Windows.Rendering;
+namespace OpenTok.Net.Win.Rendering;
 
 /// <summary>
 /// An <see cref="IVideoRenderer"/> that draws into a WinUI <see cref="WriteableBitmap"/>.

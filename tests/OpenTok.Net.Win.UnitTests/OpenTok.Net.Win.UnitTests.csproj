@@ -20,7 +20,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="../../src/OpenTok.Net.Windows/Rendering/I420Converter.cs"
+    <Compile Include="../../src/OpenTok.Net.Win/Rendering/I420Converter.cs"
              Link="Rendering/I420Converter.cs" />
   </ItemGroup>
 

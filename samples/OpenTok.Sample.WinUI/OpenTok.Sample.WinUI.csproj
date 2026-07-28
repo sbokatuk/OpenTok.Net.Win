@@ -21,7 +21,7 @@
 
     <!--
       x64, not AnyCPU. OpenTok.Client's native payload has no arm64 build; see the package's own
-      build/OpenTok.Net.Windows.targets, which fails the build rather than let that surface as a
+      build/OpenTok.Net.Win.targets, which fails the build rather than let that surface as a
       BadImageFormatException after launch.
     -->
     <Platforms>x64</Platforms>
@@ -39,7 +39,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenTok.Net.Windows" Version="$(OpenTokWindowsPackageVersion)" />
+    <PackageReference Include="OpenTok.Net.Win" Version="$(OpenTokWindowsPackageVersion)" />
   </ItemGroup>
 
 </Project>

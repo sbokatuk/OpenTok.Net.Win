@@ -2,7 +2,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 
-namespace OpenTok.Net.Windows.Rendering;
+namespace OpenTok.Net.Win.Rendering;
 
 /// <summary>
 /// A WinUI control that displays one OpenTok video stream.

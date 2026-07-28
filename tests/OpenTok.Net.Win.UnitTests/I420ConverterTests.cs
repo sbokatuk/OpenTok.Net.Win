@@ -1,7 +1,7 @@
-using OpenTok.Net.Windows.Rendering;
+using OpenTok.Net.Win.Rendering;
 using Xunit;
 
-namespace OpenTok.Net.Windows.UnitTests;
+namespace OpenTok.Net.Win.UnitTests;
 
 /// <summary>
 /// Checks the I420 to BGRA8 conversion against values worked out independently of the code.

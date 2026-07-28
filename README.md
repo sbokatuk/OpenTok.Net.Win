@@ -1,10 +1,10 @@
-# OpenTok.Net.Windows
+# OpenTok.Net.Win
 
 WinUI 3 video rendering for Vonage's OpenTok Windows SDK — the piece that lets a **WinUI or .NET
 MAUI** app on Windows actually show OpenTok video.
 
 ```bash
-dotnet add package OpenTok.Net.Windows
+dotnet add package OpenTok.Net.Win
 ```
 
 ## Why this exists
@@ -56,7 +56,7 @@ an orphaned tile on screen.
 `OpenTok.Client`'s native payload — `opentok.dll` and its three capturers — is built for **x64
 only**. There is no arm64 build in the package and no separate arm64 package.
 
-The package ships `build/OpenTok.Net.Windows.targets`, which fails the build with **OTW0001** if you
+The package ships `build/OpenTok.Net.Win.targets`, which fails the build with **OTW0001** if you
 target arm64, rather than letting it surface as a `BadImageFormatException` after the app has
 started. Windows on ARM runs the x64 build under emulation; set
 `OpenTokSkipArchitectureCheck=true` if you are supplying the native payload yourself.
@@ -64,19 +64,19 @@ started. Windows on ARM runs the x64 build under emulation; set
 ## Versioning
 
 `<native SDK version>.<binding revision>`, the same scheme the sibling repositories use, so
-`OpenTok.Net.Windows 2.34.1.x` means "sits on Vonage's Video SDK 2.34.1". `OpenTok.Net`'s façade
+`OpenTok.Net.Win 2.34.1.x` means "sits on Vonage's Video SDK 2.34.1". `OpenTok.Net`'s façade
 requires all platform heads to agree on the first three components.
 
 ## Building
 
 ```bash
-dotnet pack src/OpenTok.Net.Windows --configuration Release -o artifacts
+dotnet pack src/OpenTok.Net.Win --configuration Release -o artifacts
 ```
 
 Needs Windows and the Windows App SDK. One exception, and it is deliberate:
 
 ```bash
-dotnet test tests/OpenTok.Net.Windows.UnitTests
+dotnet test tests/OpenTok.Net.Win.UnitTests
 ```
 
 runs anywhere. `I420Converter` is written with no WinUI, Windows or OpenTok types in it, and that
@@ -89,7 +89,7 @@ is worth being able to verify on any machine. CI runs it on Ubuntu for the same 
 
 | | |
 | --- | --- |
-| `src/OpenTok.Net.Windows` | The package |
+| `src/OpenTok.Net.Win` | The package |
 | `samples/OpenTok.Sample.WinUI` | Connect, publish, subscribe — against the packed `.nupkg`, not a project reference |
-| `tests/OpenTok.Net.Windows.UnitTests` | The converter, runnable on any OS |
-| `tests/OpenTok.Net.Windows.PackageTests` | What the packed `.nupkg` contains |
+| `tests/OpenTok.Net.Win.UnitTests` | The converter, runnable on any OS |
+| `tests/OpenTok.Net.Win.PackageTests` | What the packed `.nupkg` contains |

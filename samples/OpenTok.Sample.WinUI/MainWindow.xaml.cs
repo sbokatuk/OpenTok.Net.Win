@@ -2,8 +2,8 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OpenTok;
-using OpenTok.Net.Windows;
-using OpenTok.Net.Windows.Rendering;
+using OpenTok.Net.Win;
+using OpenTok.Net.Win.Rendering;
 
 namespace OpenTok.Sample.WinUI;
 
