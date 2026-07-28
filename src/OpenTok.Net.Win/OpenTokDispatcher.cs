@@ -52,7 +52,13 @@ public sealed class OpenTokDispatcher(DispatcherQueue dispatcherQueue) : IDispat
     }
 
     /// <summary>Schedules an event carrying arguments onto the UI thread.</summary>
+    /// <remarks>
+    /// The <c>EventArgs</c> constraint is <see cref="IDispatcher"/>'s own rather than a choice made
+    /// here. An implementing method may not widen it: leaving it off does not merely accept more
+    /// types, it fails to compile with CS0425.
+    /// </remarks>
     public void DispatchEvent<T>(object sender, EventHandler<T> handler, T args)
+        where T : EventArgs
     {
         if (handler is null)
         {
