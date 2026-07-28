@@ -128,8 +128,22 @@ jobs:
       - name: Build the sample
         shell: bash
         run: |
-          v="$(ls artifacts/OpenTok.Net.Win.*.nupkg | head -1 | sed -E 's/.*OpenTok\.Net\.Windows\.(.*)\.nupkg/\1/')"
+          # Computed from the same two properties release.yml and pr.yml read, rather than scraped
+          # out of a file name. The previous shape parsed `ls artifacts/*.nupkg` with a sed pattern,
+          # which had two problems: the glob also matches the .snupkg sitting beside it, and the
+          # pattern silently stopped substituting when the package was renamed — leaving v set to
+          # the whole path and the build failing with "is not a valid version string".
+          version="$(sed -n 's:.*<OpenTokVersion>\(.*\)</OpenTokVersion>.*:\1:p' Directory.Build.props | head -1)"
+          revision="$(sed -n 's:.*<OpenTokBindingRevision>\(.*\)</OpenTokBindingRevision>.*:\1:p' Directory.Build.props | head -1)"
+          v="${version}.${revision}${{ inputs.suffix != '' && format('-{0}', inputs.suffix) || '' }}"
+
           echo "building against ${v}"
+
+          if [ ! -f "artifacts/OpenTok.Net.Win.${v}.nupkg" ]; then
+            echo "::error::artifacts/OpenTok.Net.Win.${v}.nupkg does not exist — the pack job and this job disagree about the version"
+            ls artifacts
+            exit 1
+          fi
 
           # x64 explicitly. OpenTok.Client's native payload has no arm64 build, and the package's
           # own build/OpenTok.Net.Win.targets fails the build rather than let that reach
@@ -137,7 +151,7 @@ jobs:
           dotnet build samples/OpenTok.Sample.WinUI \
             --configuration Release \
             -r win-x64 --self-contained false \
-            -p:OpenTokWindowsPackageVersion="${v}"
+            -p:OpenTokWinPackageVersion="${v}"
 
       # The renderer is useless if the SDK's native payload does not travel with it — that is the
       # failure this package exists downstream of, and it is invisible until the first frame.

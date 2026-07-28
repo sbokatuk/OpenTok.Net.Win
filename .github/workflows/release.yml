@@ -53,8 +53,13 @@ jobs:
     needs: version
     uses: ./.github/workflows/build.yml
     with:
-      # The sample already built on the commit being tagged; it is a compile check on the public
-      # API, not something a release re-derives.
+      # Kept on for releases, unlike the sibling repositories, which turn their equivalent off on the
+      # grounds that the tagged commit already passed it on its pull request.
+      #
+      # That reasoning holds only where a package's own consumers are exercised elsewhere, and here
+      # the sample job is the *only* thing that proves the packed .nupkg resolves and brings Vonage's
+      # native payload with it. It earned its place immediately: the first tagged release failed in
+      # exactly this job, before publishing anything.
       verify-release: true
 
   publish:
