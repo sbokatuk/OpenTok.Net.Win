@@ -1,15 +1,21 @@
 name: build
 
+# Reusable only, like the sibling repositories' build.yml. pr.yml and release.yml decide the version
+# and what to do with the result; also triggering on pull_request would run this whole pipeline
+# twice for every push to a pull request — once at the beta version and once without one.
 on:
-  pull_request:
-  push:
-    branches: [main]
   workflow_call:
     inputs:
       suffix:
+        description: Optional prerelease suffix (e.g. beta.12.34) appended to the package's version.
+        required: false
         type: string
         default: ''
       verify-release:
+        description: >
+          Whether to build the WinUI sample against the packed package. Defaults to true so a pull
+          request gets it; a release turns it off, because the tagged commit already passed it there.
+        required: false
         type: boolean
         default: true
 

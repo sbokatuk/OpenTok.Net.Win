@@ -1,0 +1,92 @@
+name: pull request
+
+# Publishes a beta of OpenTok.Net.Win to nuget.org from every pull request, the same way the iOS and
+# Android binding repositories do.
+#
+# Not a nicety. OpenTok.Net pins each platform package *exactly* — a range would let a consumer
+# resolve a platform package the façade was never built against — so its Windows head cannot be
+# built, tested or reviewed until the version it names exists on nuget.org. Without a beta from
+# here, the only way to get a green Windows run over there is to cut a real release first and hope,
+# which is precisely the ordering that produced the 2.34.1.3 mess.
+#
+# The suffix is beta.<pr number>.<run number>, so every push to a pull request produces a version
+# that sorts above the last and below the eventual stable release.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: pr-${{ github.event.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: resolve beta suffix
+    runs-on: ubuntu-latest
+    outputs:
+      suffix: ${{ steps.resolve.outputs.suffix }}
+    steps:
+      - id: resolve
+        run: |
+          suffix="beta.${{ github.event.number }}.${{ github.run_number }}"
+          echo "suffix=${suffix}" >> "$GITHUB_OUTPUT"
+          echo "Building OpenTok.Net.Win at its own version with suffix -${suffix}" >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    name: build
+    needs: version
+    uses: ./.github/workflows/build.yml
+    with:
+      suffix: ${{ needs.version.outputs.suffix }}
+
+  publish:
+    name: publish beta to nuget.org
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    # Fork pull requests cannot reach the nuget.org environment's credentials, and should not.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    environment: nuget.org
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget-packages
+          path: artifacts
+
+      - name: Authenticate to nuget.org
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push to nuget.org
+        run: |
+          dotnet nuget push "artifacts/*.nupkg" \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" \
+            --skip-duplicate
+
+      - name: Summarise
+        run: |
+          version="$(sed -n 's:.*<OpenTokVersion>\(.*\)</OpenTokVersion>.*:\1:p' Directory.Build.props | head -1)"
+          revision="$(sed -n 's:.*<OpenTokBindingRevision>\(.*\)</OpenTokBindingRevision>.*:\1:p' Directory.Build.props | head -1)"
+          s="${{ needs.version.outputs.suffix }}"
+
+          echo "### Published beta package to nuget.org" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [OpenTok.Net.Win](https://www.nuget.org/packages/OpenTok.Net.Win/${version}.${revision}-${s})" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pin this in OpenTok.Net's \`OpenTokWinPackageVersion\` to get a green Windows run there before release." >> "$GITHUB_STEP_SUMMARY"
