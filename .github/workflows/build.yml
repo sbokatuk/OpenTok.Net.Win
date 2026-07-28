@@ -6,19 +6,21 @@ name: build
 on:
   workflow_call:
     inputs:
+      verify:
+        description: >
+          Whether to run the verification jobs — package validation, the sample builds, the
+          Release link checks and the e2e suites. Pull requests leave it at true, and are the only
+          place any of this runs. Releases pass false: the tagged commit was already verified on
+          its pull request, so a tag packs and publishes and nothing more. The gate is the same
+          input, with the same name and the same meaning, in every repository.
+        required: false
+        default: true
+        type: boolean
       suffix:
         description: Optional prerelease suffix (e.g. beta.12.34) appended to the package's version.
         required: false
         type: string
         default: ''
-      verify-release:
-        description: >
-          Whether to build the WinUI sample against the packed package. Defaults to true so a pull
-          request gets it; a release turns it off, because the tagged commit already passed it there.
-        required: false
-        type: boolean
-        default: true
-
 permissions:
   contents: read
 
@@ -32,6 +34,7 @@ jobs:
   # rather than behind a Windows runner and a Windows App SDK restore.
   converter:
     name: converter arithmetic (ubuntu)
+    if: ${{ inputs.verify }}
     timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
@@ -80,6 +83,7 @@ jobs:
   # project file says it should. Runs on Linux because it only reads the .nupkg as a zip.
   package-tests:
     name: package contents
+    if: ${{ inputs.verify }}
     timeout-minutes: 10
     needs: pack
     runs-on: ubuntu-latest
@@ -109,7 +113,7 @@ jobs:
     name: WinUI sample against the packed package (Release)
     timeout-minutes: 30
     needs: pack
-    if: ${{ inputs.verify-release != false }}
+    if: ${{ inputs.verify }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
