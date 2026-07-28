@@ -1,0 +1,137 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: resolve release version
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: resolve
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          case "${VERSION}" in
+            [0-9]*.[0-9]*.[0-9]*.[0-9]*) ;;
+            *)
+              echo "::error::tag '${GITHUB_REF_NAME}' does not look like a version (expected e.g. v2.34.1.1)"
+              exit 1
+              ;;
+          esac
+
+          # The tag has to agree with what the working tree would actually build. A tag that does
+          # not would publish a package whose version says one thing while the commit says another,
+          # and nothing downstream would notice.
+          sdk="$(sed -n 's:.*<OpenTokVersion>\(.*\)</OpenTokVersion>.*:\1:p' Directory.Build.props | head -1)"
+          revision="$(sed -n 's:.*<OpenTokBindingRevision>\(.*\)</OpenTokBindingRevision>.*:\1:p' Directory.Build.props | head -1)"
+          expected="${sdk}.${revision}"
+
+          if [ "${VERSION%%-*}" != "${expected}" ]; then
+            echo "::error::tag '${GITHUB_REF_NAME}' does not match Directory.Build.props (${expected}). Bump the props or move the tag."
+            exit 1
+          fi
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "releasing ${VERSION}" >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    name: build
+    needs: version
+    uses: ./.github/workflows/build.yml
+    with:
+      # The sample already built on the commit being tagged; it is a compile check on the public
+      # API, not something a release re-derives.
+      verify-release: true
+
+  publish:
+    name: publish to nuget.org and create release
+    timeout-minutes: 20
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Needed to find the previous tag when generating the fallback changelog.
+          fetch-depth: 0
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget-packages
+          path: artifacts
+
+      # nuget.org first: a GitHub release linking to packages that failed to upload would be worse
+      # than a release created a moment late.
+      #
+      # Immediately before the push, deliberately — the issued key is valid for one hour and each
+      # OIDC token can be exchanged exactly once.
+      - name: Authenticate to nuget.org
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push to nuget.org
+        run: |
+          dotnet nuget push "artifacts/*.nupkg" \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" \
+            --skip-duplicate
+
+      - name: Compose release notes
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          # A curated docs/release-notes/<version>.md replaces the generated commit list when one
+          # exists; the stripped-suffix fallback lets a prerelease reuse its stable notes.
+          notes="docs/release-notes/${VERSION}.md"
+          [ -f "${notes}" ] || notes="docs/release-notes/${VERSION%%-*}.md"
+
+          if [ -f "${notes}" ]; then
+            cat "${notes}" > release-notes.md
+          else
+            previous=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+            {
+              echo "## Changes"
+              echo
+              if [ -n "${previous}" ]; then
+                git log --pretty='* %s' "${previous}..${GITHUB_REF_NAME}"
+              else
+                git log --pretty='* %s' "${GITHUB_REF_NAME}"
+              fi
+            } > release-notes.md
+          fi
+
+          cat release-notes.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes-file release-notes.md \
+            artifacts/*.nupkg
