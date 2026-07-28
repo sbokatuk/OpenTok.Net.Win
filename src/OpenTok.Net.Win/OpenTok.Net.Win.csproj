@@ -41,33 +41,4 @@
     <None Include="build/OpenTok.Net.Win.targets" Pack="true" PackagePath="build/" />
   </ItemGroup>
 
-  <!--
-    Keep OpenTok.Client's native payload out of *this* package.
-
-    OpenTok.Client ships build/OpenTok.Client.targets, which globs its own package directory and adds
-    opentok.dll and the three capturers as @(Content) with CopyToOutputDirectory. Right for an
-    application, wrong for a library that gets packed: those Content items were written into this
-    package, so a consumer restored OpenTok.Net.Win and then tried to copy
-    lib/net9.0-windows10.0.19041/OpenTok.Net.Win/DshowCapturer.dll — a path recorded at our pack time
-    that exists nowhere in the package recording it. Four MSB3030s in the sample.
-
-    Costs a consumer nothing: OpenTok.Client is a dependency of this package, so its targets run in
-    the consuming project and copy the real files out of the real package directory. The sample job's
-    native-payload check is the assertion that this still happens.
-
-    A target rather than an ItemGroup in the project body, because NuGet imports a dependency's
-    build/*.targets *after* the body — the items do not exist yet when the body is evaluated.
-
-    Not IncludeContentInPack=false, which was the first attempt and is a trap: despite the name it
-    guards the whole of NuGet's _GetPackageFiles target, so it also drops @(None) items with an
-    explicit Pack="true" — the README and the LICENCE — and the pack fails with NU5030 rather than
-    silently. Hence matching on the extension instead: this project has no @(Content) .dll of its
-    own, so any that appears came from a dependency and belongs to that dependency's package.
-  -->
-  <Target Name="OpenTokExcludeSdkNativeContentFromPack" BeforeTargets="_GetPackageFiles;GenerateNuspec">
-    <ItemGroup>
-      <Content Update="@(Content)" Pack="false" Condition=" '%(Extension)' == '.dll' " />
-    </ItemGroup>
-  </Target>
-
 </Project>

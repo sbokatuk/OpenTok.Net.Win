@@ -152,10 +152,29 @@ jobs:
           # x64 explicitly. OpenTok.Client's native payload has no arm64 build, and the package's
           # own build/OpenTok.Net.Win.targets fails the build rather than let that reach
           # runtime — so this also exercises that the guard permits the configuration it should.
-          dotnet build samples/OpenTok.Sample.WinUI \
-            --configuration Release \
-            -r win-x64 --self-contained false \
-            -p:OpenTokWinPackageVersion="${v}"
+          #
+          # On failure, dump what the sample actually resolved. This job is the only one that builds
+          # a real consumer, and its failures have twice been about what the package hands a consumer
+          # rather than about the source — questions that cannot be answered from a Mac, because a
+          # -windows consumer build needs the XAML compiler. The two things worth knowing are what is
+          # in the package and which Content items the consumer ended up with.
+          if ! dotnet build samples/OpenTok.Sample.WinUI \
+                 --configuration Release \
+                 -r win-x64 --self-contained false \
+                 -p:OpenTokWinPackageVersion="${v}"; then
+
+            echo "::group::package contents"
+            unzip -l "artifacts/OpenTok.Net.Win.${v}.nupkg" || true
+            echo "::endgroup::"
+
+            echo "::group::Content items the sample resolved"
+            dotnet msbuild samples/OpenTok.Sample.WinUI/OpenTok.Sample.WinUI.csproj \
+              -getItem:Content -p:Configuration=Release \
+              -p:OpenTokWinPackageVersion="${v}" || true
+            echo "::endgroup::"
+
+            exit 1
+          fi
 
       # The renderer is useless if the SDK's native payload does not travel with it — that is the
       # failure this package exists downstream of, and it is invisible until the first frame.
