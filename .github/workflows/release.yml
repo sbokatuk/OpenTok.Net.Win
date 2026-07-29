@@ -98,7 +98,7 @@ jobs:
     timeout-minutes: 20
     needs: [version, build]
     runs-on: ubuntu-latest
-    environment: release
+    environment: nuget.org
     permissions:
       contents: write
       id-token: write
